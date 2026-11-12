@@ -1,0 +1,124 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+enum PartyType {
+  CUSTOMER
+  SUPPLIER
+  BOTH
+}
+
+enum TxType {
+  PURCHASE
+  SALE
+}
+
+enum PayDir {
+  RECEIVED
+  PAID
+}
+
+enum EntryKind {
+  INCOME
+  EXPENSE
+}
+
+enum CattleStatus {
+  ACTIVE
+  SOLD
+}
+
+model User {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+}
+
+model Party {
+  id           String        @id @default(auto()) @map("_id") @db.ObjectId
+  name         String
+  phone        String?
+  address      String?
+  type         PartyType     @default(CUSTOMER)
+  createdAt    DateTime      @default(now())
+  transactions Transaction[]
+  payments     Payment[]
+}
+
+model Product {
+  id           String        @id @default(auto()) @map("_id") @db.ObjectId
+  name         String
+  unit         String        @default("kg")
+  transactions Transaction[]
+}
+
+model Transaction {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  date      DateTime
+  type      TxType
+  partyId   String   @db.ObjectId
+  productId String   @db.ObjectId
+  quantity  Float
+  rate      Float
+  total     Float
+  paid      Float    @default(0)
+  note      String?
+  party     Party    @relation(fields: [partyId], references: [id])
+  product   Product  @relation(fields: [productId], references: [id])
+
+  @@index([date])
+  @@index([partyId])
+}
+
+model Payment {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  date      DateTime
+  partyId   String   @db.ObjectId
+  direction PayDir
+  amount    Float
+  note      String?
+  party     Party    @relation(fields: [partyId], references: [id])
+
+  @@index([date])
+}
+
+model Entry {
+  id       String    @id @default(auto()) @map("_id") @db.ObjectId
+  date     DateTime
+  kind     EntryKind
+  category String
+  amount   Float
+  note     String?
+
+  @@index([date])
+}
+
+model Cattle {
+  id            String          @id @default(auto()) @map("_id") @db.ObjectId
+  tag           String          @unique
+  breed         String?
+  purchaseDate  DateTime
+  purchasePrice Float
+  status        CattleStatus    @default(ACTIVE)
+  saleDate      DateTime?
+  salePrice     Float?
+  note          String?
+  expenses      CattleExpense[]
+}
+
+model CattleExpense {
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  cattleId String   @db.ObjectId
+  date     DateTime
+  category String
+  amount   Float
+  note     String?
+  cattle   Cattle   @relation(fields: [cattleId], references: [id], onDelete: Cascade)
+}
