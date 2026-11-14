@@ -86,6 +86,10 @@ export function PartyLedger() {
   if (!data) return <p className="p-6">লোড হচ্ছে…</p>;
 
   const { party, outstandingMoney, outstandingCrates, rows } = data;
+  const profitLoss = outstandingMoney; // backend returns running total as outstandingMoney
+  const totalAllocatedCost = rows.filter(r => r.type === 'SUPPLY').reduce((s, r) => s + (r.amountPayable || 0), 0);
+  const totalPayments = rows.filter(r => r.type === 'PAYMENT').reduce((s, r) => s + (r.amountReceived || 0), 0);
+  const pl = totalPayments - totalAllocatedCost;
   const supplies = rows.filter(r => r.type === 'SUPPLY');
   const payments = rows.filter(r => r.type === 'PAYMENT');
   const crates = rows.filter(r =>
@@ -103,7 +107,12 @@ export function PartyLedger() {
       </div>
 
       <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div className="card text-center"><p className="text-xs text-slate-500">বকেয়া টাকা</p><p className={`text-lg font-bold ${outstandingMoney > 0 ? 'text-red-600' : 'text-green-600'}`}>{taka(outstandingMoney)}</p></div>
+        <div className="card text-center">
+          <p className="text-xs text-slate-500">লাভ/ক্ষতি</p>
+          <p className={`text-lg font-bold ${pl >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+            {pl >= 0 ? '▲ ' : '▼ '}{taka(Math.abs(pl))}
+          </p>
+        </div>
         <div className="card text-center"><p className="text-xs text-slate-500">বকেয়া ক্রেট</p><p className={`text-lg font-bold ${outstandingCrates > 0 ? 'text-orange-600' : 'text-green-600'}`}>{outstandingCrates}</p></div>
         <div className="card text-center"><p className="text-xs text-slate-500">মোট সরবরাহ</p><p className="text-lg font-bold text-forest">{supplies.length} টি</p></div>
         <div className="card text-center"><p className="text-xs text-slate-500">মোট পেমেন্ট</p><p className="text-lg font-bold text-forest">{payments.length} টি</p></div>
@@ -118,18 +127,22 @@ export function PartyLedger() {
       <div className="card overflow-x-auto p-0">
         {tab === 'ledger' && (
           <table className="w-full">
-            <thead><tr><th className="th">তারিখ</th><th className="th">ধরন</th><th className="th">বিবরণ</th><th className="th">কেজি</th><th className="th">ক্রেট</th><th className="th">প্রাপ্য</th><th className="th">প্রাপ্ত</th><th className="th">বকেয়া টাকা</th><th className="th">বকেয়া ক্রেট</th></tr></thead>
+            <thead><tr><th className="th">তারিখ</th><th className="th">ধরন</th><th className="th">বিবরণ</th><th className="th">কেজি</th><th className="th">ক্রেট</th><th className="th">বরাদ্দ খরচ</th><th className="th">প্রাপ্ত</th><th className="th">লাভ/ক্ষতি</th><th className="th">বকেয়া ক্রেট</th></tr></thead>
             <tbody>
               {rows.map((r, i) => (
                 <tr key={i} className="hover:bg-field">
                   <td className="td">{day(r.date)}</td>
-                  <td className="td"><span className={`rounded px-2 py-0.5 text-xs font-medium ${r.type === 'SUPPLY' ? 'bg-blue-100 text-blue-700' : r.type === 'PAYMENT' ? 'bg-green-100 text-green-700' : r.type === 'CRATE_RETURN' ? 'bg-orange-100 text-orange-700' : 'bg-slate-100'}`}>{r.type === 'SUPPLY' ? 'সরবরাহ' : r.type === 'PAYMENT' ? 'পেমেন্ট' : r.type === 'SETTLEMENT' ? 'নিষ্পত্তি' : r.type === 'CRATE_SENT' ? 'ক্রেট পাঠানো' : 'ক্রেট ফেরত'}</span></td>
+                  <td className="td"><span className={`rounded px-2 py-0.5 text-xs font-medium ${r.type === 'SUPPLY' ? 'bg-blue-100 text-blue-700' : r.type === 'PAYMENT' ? 'bg-green-100 text-green-700' : r.type === 'CRATE_RETURN' ? 'bg-orange-100 text-orange-700' : 'bg-slate-100'}`}>{r.type === 'SUPPLY' ? 'সরবরাহ' : r.type === 'PAYMENT' ? 'পেমেন্ট' : r.type === 'CRATE_SENT' ? 'ক্রেট পাঠানো' : 'ক্রেট ফেরত'}</span></td>
                   <td className="td text-xs">{r.products || ''}</td>
                   <td className="td">{r.weightKg || ''}</td>
                   <td className="td">{r.cratesSent || r.cratesReturned || ''}</td>
                   <td className="td">{r.amountPayable ? taka(r.amountPayable) : ''}</td>
                   <td className="td">{r.amountReceived ? <span className="text-green-600">{taka(r.amountReceived)}</span> : ''}</td>
-                  <td className="td font-semibold">{taka(r.outstandingMoney)}</td>
+                  <td className="td font-semibold">
+                    <span className={r.outstandingMoney <= 0 ? 'text-green-600' : 'text-red-600'}>
+                      {r.outstandingMoney <= 0 ? '▲ ' : '▼ '}{taka(Math.abs(r.outstandingMoney))}
+                    </span>
+                  </td>
                   <td className="td">{r.outstandingCrates}</td>
                 </tr>
               ))}
@@ -138,7 +151,7 @@ export function PartyLedger() {
         )}
         {tab === 'supplies' && (
           <table className="w-full">
-            <thead><tr><th className="th">তারিখ</th><th className="th">পণ্য</th><th className="th">মোট কেজি</th><th className="th">ক্রেট</th><th className="th">প্রত্যাশিত</th></tr></thead>
+            <thead><tr><th className="th">তারিখ</th><th className="th">পণ্য</th><th className="th">মোট কেজি</th><th className="th">ক্রেট</th><th className="th">বরাদ্দ খরচ</th></tr></thead>
             <tbody>
               {supplies.map((r, i) => <tr key={i} className="hover:bg-field"><td className="td">{day(r.date)}</td><td className="td text-xs">{r.products}</td><td className="td">{r.weightKg} kg</td><td className="td">{r.cratesSent}</td><td className="td">{taka(r.amountPayable)}</td></tr>)}
             </tbody>

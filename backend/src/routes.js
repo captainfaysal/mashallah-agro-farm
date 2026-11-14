@@ -136,12 +136,6 @@ r.get('/parties/:id/ledger', requireAuth, wrap(async (req, res) => {
     const supplyKey = recordId(st.supplyId);
     if (supplyKey) {
       settlementsBySupply.set(supplyKey, [...(settlementsBySupply.get(supplyKey) || []), st]);
-    } else {
-      events.push({
-        date: st.settlementDate, priority: 1, type: 'SETTLEMENT', ref: st._id,
-        actualSales: st.actualSalesAmount, amountPayable: st.agreeableAmount,
-        note: 'সরবরাহের সাথে যুক্ত নয়; বকেয়ায় প্রভাব নেই',
-      });
     }
   }
   for (const supply of supplies) {
