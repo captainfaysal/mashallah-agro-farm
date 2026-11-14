@@ -9,7 +9,7 @@ const cookieOpts = {
 };
 
 export function signIn(res, user) {
-  const token = jwt.sign({ id: user.id, name: user.name }, process.env.JWT_SECRET, { expiresIn: '7d' });
+  const token = jwt.sign({ id: String(user._id), name: user.name }, process.env.JWT_SECRET, { expiresIn: '7d' });
   res.cookie('token', token, cookieOpts);
   return token;
 }
