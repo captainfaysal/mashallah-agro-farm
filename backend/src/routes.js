@@ -128,35 +128,15 @@ r.get('/parties/:id/ledger', requireAuth, wrap(async (req, res) => {
       products: s.items.map(i => `${i.productId?.name} ${i.weightKg}kg`).join(', '),
       weightKg: s.totalWeightKg, cratesSent: s.totalCrates,
       amountPayable: Number(s.totalAllocatedCost || 0),
-      moneyChange: Number(s.totalAllocatedCost || 0),
       cratesChange: Number(s.totalCrates || 0),
     });
   }
   for (const st of settlements) {
     const supplyKey = recordId(st.supplyId);
-    if (supplyKey) {
-      settlementsBySupply.set(supplyKey, [...(settlementsBySupply.get(supplyKey) || []), st]);
-    }
-  }
-  for (const supply of supplies) {
-    let previousReceivable = Number(supply.totalAllocatedCost || 0);
-    const linkedSettlements = (settlementsBySupply.get(String(supply._id)) || [])
-      .sort((a, b) => new Date(a.settlementDate) - new Date(b.settlementDate));
-    for (const settlement of linkedSettlements) {
-      const agreedReceivable = Number(settlement.agreeableAmount || 0);
-      events.push({
-        date: settlement.settlementDate, priority: 1, type: 'SETTLEMENT', ref: settlement._id,
-        actualSales: settlement.actualSalesAmount, amountPayable: agreedReceivable,
-        moneyChange: agreedReceivable - previousReceivable,
-      });
-      previousReceivable = agreedReceivable;
-    }
+    if (supplyKey) settlementsBySupply.set(supplyKey, [...(settlementsBySupply.get(supplyKey) || []), st]);
   }
   for (const p of payments) {
-    events.push({
-      date: p.paymentDate, priority: 2, type: 'PAYMENT', ref: p._id,
-      amountReceived: Number(p.amount || 0), moneyChange: -Number(p.amount || 0),
-    });
+    events.push({ date: p.paymentDate, priority: 2, type: 'PAYMENT', ref: p._id, amountReceived: Number(p.amount || 0) });
   }
   for (const c of crateMovements) {
     if (c.direction === 'SENT' && !c.supplyId) {
@@ -168,9 +148,8 @@ r.get('/parties/:id/ledger', requireAuth, wrap(async (req, res) => {
 
   events.sort((a, b) => new Date(a.date) - new Date(b.date) || a.priority - b.priority);
 
-  // cycle-based profit/loss: resets after each payment
-  let cycleAllocated = 0, cyclePayment = 0, outstandingCrates = 0;
-  const rows = events.map(({ priority, moneyChange = 0, cratesChange = 0, ...event }) => {
+  let cycleAllocated = 0, cyclePayment = 0;
+  const rows = events.map(({ priority, cratesChange = 0, ...event }) => {
     if (event.type === 'SUPPLY') cycleAllocated += event.amountPayable || 0;
     if (event.type === 'PAYMENT') cyclePayment += event.amountReceived || 0;
     outstandingCrates += cratesChange;
