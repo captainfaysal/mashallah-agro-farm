@@ -210,7 +210,7 @@ r.delete('/products/:id', requireAuth, wrap(async (req, res) => {
 /* ---------- purchases ---------- */
 const purchaseItemSchema = z.object({
   productId: id, crates: z.coerce.number().default(0),
-  weightKg: pos, ratePerKg: money,
+  weightKg: pos, ratePerKg: money.default(0), amount: money,
 });
 const purchaseSchema = z.object({
   purchaseDate: date, supplierName: str.min(1),
@@ -227,17 +227,15 @@ r.get('/purchases', requireAuth, wrap(async (req, res) => {
 
 r.post('/purchases', requireAuth, wrap(async (req, res) => {
   const data = purchaseSchema.parse(req.body);
-  const items = data.items.map(i => ({ ...i, amount: i.weightKg * i.ratePerKg }));
-  const totalAmount = items.reduce((s, i) => s + i.amount, 0);
+  const totalAmount = data.items.reduce((s, i) => s + i.amount, 0);
   const landedCost = totalAmount + data.transportCost + data.otherCost;
-  const doc = await Purchase.create({ ...data, items, totalAmount, landedCost });
+  const doc = await Purchase.create({ ...data, totalAmount, landedCost });
   res.status(201).json(await doc.populate('items.productId'));
 }));
 
 r.put('/purchases/:id', requireAuth, wrap(async (req, res) => {
   const data = purchaseSchema.partial().parse(req.body);
   if (data.items) {
-    data.items = data.items.map(i => ({ ...i, amount: i.weightKg * i.ratePerKg }));
     data.totalAmount = data.items.reduce((s, i) => s + i.amount, 0);
     data.landedCost = data.totalAmount + (data.transportCost || 0) + (data.otherCost || 0);
   }

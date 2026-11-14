@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import api, { taka, day } from '../api';
 import { Plus, Trash2, Pencil } from 'lucide-react';
 
-const empty = () => ({ purchaseDate: day(new Date()), supplierName: '', items: [{ productId: '', crates: 0, weightKg: '', ratePerKg: '' }], transportCost: 0, otherCost: 0, note: '' });
+const empty = () => ({ purchaseDate: day(new Date()), supplierName: '', items: [{ productId: '', crates: 0, weightKg: '', amount: '' }], transportCost: 0, otherCost: 0, note: '' });
 
 export default function Purchases() {
   const [rows, setRows] = useState([]);
@@ -14,17 +14,16 @@ export default function Purchases() {
   useEffect(() => { load(); api.get('/products').then(setProducts); }, []);
 
   const setItem = (i, k, v) => setForm(f => { const items = [...f.items]; items[i] = { ...items[i], [k]: v }; return { ...f, items }; });
-  const addItem = () => setForm(f => ({ ...f, items: [...f.items, { productId: '', crates: 0, weightKg: '', ratePerKg: '' }] }));
+  const addItem = () => setForm(f => ({ ...f, items: [...f.items, { productId: '', crates: 0, weightKg: '', amount: '' }] }));
   const removeItem = (i) => setForm(f => ({ ...f, items: f.items.filter((_, j) => j !== i) }));
 
-  const itemTotal = (it) => (Number(it.weightKg) || 0) * (Number(it.ratePerKg) || 0);
-  const grandTotal = form ? form.items.reduce((s, i) => s + itemTotal(i), 0) : 0;
+  const grandTotal = form ? form.items.reduce((s, i) => s + (Number(i.amount) || 0), 0) : 0;
   const landedCost = form ? grandTotal + Number(form.transportCost || 0) + Number(form.otherCost || 0) : 0;
 
   const save = async (e) => {
     e.preventDefault(); setErr('');
     try {
-      const body = { ...form, items: form.items.map(i => ({ ...i, crates: Number(i.crates), weightKg: Number(i.weightKg), ratePerKg: Number(i.ratePerKg) })), transportCost: Number(form.transportCost), otherCost: Number(form.otherCost) };
+      const body = { ...form, items: form.items.map(i => ({ ...i, crates: Number(i.crates), weightKg: Number(i.weightKg), amount: Number(i.amount) })), transportCost: Number(form.transportCost), otherCost: Number(form.otherCost) };
       if (form._id) await api.put(`/purchases/${form._id}`, body);
       else await api.post('/purchases', body);
       setForm(null); load();
@@ -54,7 +53,7 @@ export default function Purchases() {
 
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead><tr><th className="th">পণ্য</th><th className="th">ক্রেট</th><th className="th">ওজন (কেজি)</th><th className="th">দর/কেজি</th><th className="th">মোট</th><th className="th" /></tr></thead>
+              <thead><tr><th className="th">পণ্য</th><th className="th">ক্রেট</th><th className="th">ওজন (কেজি)</th><th className="th">মোট টাকা</th><th className="th" /></tr></thead>
               <tbody>
                 {form.items.map((it, i) => (
                   <tr key={i}>
@@ -64,8 +63,7 @@ export default function Purchases() {
                     </select></td>
                     <td className="td"><input className="input w-20" type="number" min="0" value={it.crates} onChange={e => setItem(i, 'crates', e.target.value)} /></td>
                     <td className="td"><input className="input w-28" type="number" step="0.01" required value={it.weightKg} onChange={e => setItem(i, 'weightKg', e.target.value)} /></td>
-                    <td className="td"><input className="input w-28" type="number" step="0.01" required value={it.ratePerKg} onChange={e => setItem(i, 'ratePerKg', e.target.value)} /></td>
-                    <td className="td font-medium">{taka(itemTotal(it))}</td>
+                    <td className="td"><input className="input w-28" type="number" step="0.01" required value={it.amount} onChange={e => setItem(i, 'amount', e.target.value)} /></td>
                     <td className="td"><button type="button" className="btn-ghost px-2 text-red-600" onClick={() => removeItem(i)}><Trash2 size={14} /></button></td>
                   </tr>
                 ))}
@@ -80,7 +78,7 @@ export default function Purchases() {
             <label className="text-sm"><span className="mb-1 block text-slate-600">অন্যান্য খরচ</span>
               <input className="input" type="number" step="0.01" min="0" value={form.otherCost} onChange={e => setForm({ ...form, otherCost: e.target.value })} /></label>
             <div className="text-sm"><span className="mb-1 block text-slate-600">পণ্যের মোট</span><p className="font-semibold text-forest">{taka(grandTotal)}</p></div>
-            <div className="text-sm"><span className="mb-1 block text-slate-600">মোট ল্যান্ডেড কস্ট</span><p className="font-bold text-lg text-forest">{taka(landedCost)}</p></div>
+            <div className="text-sm"><span className="mb-1 block text-slate-600">সর্বমোট খরচ</span><p className="font-bold text-lg text-forest">{taka(landedCost)}</p></div>
           </div>
 
           {err && <p className="text-sm text-red-700">{err}</p>}
@@ -90,7 +88,7 @@ export default function Purchases() {
 
       <div className="card overflow-x-auto p-0">
         <table className="w-full">
-          <thead><tr><th className="th">তারিখ</th><th className="th">সরবরাহকারী</th><th className="th">পণ্য</th><th className="th">মোট ক্যারেট</th><th className="th">মোট কেজি</th><th className="th">পণ্য মোট</th><th className="th">ল্যান্ডেড কস্ট</th><th className="th" /></tr></thead>
+          <thead><tr><th className="th">তারিখ</th><th className="th">সরবরাহকারী</th><th className="th">পণ্য</th><th className="th">মোট ক্রেট</th><th className="th">মোট কেজি</th><th className="th">পণ্য মোট</th><th className="th">সর্বমোট খরচ</th><th className="th" /></tr></thead>
           <tbody>
             {rows.length === 0 && <tr><td className="td" colSpan={8}>কোনো রেকর্ড নেই</td></tr>}
             {rows.map(r => (
@@ -103,7 +101,7 @@ export default function Purchases() {
                 <td className="td">{taka(r.totalAmount)}</td>
                 <td className="td font-semibold">{taka(r.landedCost)}</td>
                 <td className="td text-right">
-                  <button className="btn-ghost px-2" onClick={() => { setErr(''); setForm({ ...r, _id: r._id, purchaseDate: day(r.purchaseDate), items: r.items.map(i => ({ ...i, productId: i.productId?._id || i.productId })) }); }}><Pencil size={14} /></button>
+                  <button className="btn-ghost px-2" onClick={() => { setErr(''); setForm({ ...r, _id: r._id, purchaseDate: day(r.purchaseDate), items: r.items.map(i => ({ ...i, productId: i.productId?._id || i.productId, amount: i.amount })) }); }}><Pencil size={14} /></button>
                   <button className="btn-ghost px-2 text-red-600" onClick={() => remove(r._id)}><Trash2 size={14} /></button>
                 </td>
               </tr>
