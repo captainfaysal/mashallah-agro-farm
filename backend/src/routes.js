@@ -100,6 +100,7 @@ r.get('/parties', requireAuth, wrap(async (req, res) => {
     ...p.toObject(),
     outstandingMoney: moneyMap.get(String(p._id)) || 0,
     outstandingCrates: crateMap.get(String(p._id)) || 0,
+    totalAllocatedCost: supplies.filter(s => String(s.partyId) === String(p._id)).reduce((sum, s) => sum + Number(s.totalAllocatedCost || 0), 0),
   })));
 }));
 

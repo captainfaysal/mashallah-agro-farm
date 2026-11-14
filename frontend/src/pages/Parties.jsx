@@ -48,14 +48,14 @@ export function Parties() {
 
       <div className="card overflow-x-auto p-0">
         <table className="w-full">
-          <thead><tr><th className="th">নাম</th><th className="th">ফোন</th><th className="th">বকেয়া টাকা</th><th className="th">বকেয়া ক্রেট</th><th className="th" /></tr></thead>
+          <thead><tr><th className="th">নাম</th><th className="th">ফোন</th><th className="th">বরাদ্দ খরচ (টাকা)</th><th className="th">বকেয়া ক্রেট</th><th className="th" /></tr></thead>
           <tbody>
             {rows.length === 0 && <tr><td className="td" colSpan={5}>কোনো পার্টি নেই</td></tr>}
             {rows.map(r => (
               <tr key={r._id} className="hover:bg-field">
                 <td className="td"><Link className="font-medium text-forest underline" to={`/app/parties/${r._id}`}>{r.name}</Link></td>
                 <td className="td">{r.phone}</td>
-                <td className="td"><span className={r.outstandingMoney > 0 ? 'text-red-600 font-semibold' : 'text-green-600'}>{taka(r.outstandingMoney)}</span></td>
+                <td className="td"><span className={r.totalAllocatedCost > 0 ? 'text-blue-700 font-semibold' : ''}>{taka(r.totalAllocatedCost)}</span></td>
                 <td className="td"><span className={r.outstandingCrates > 0 ? 'text-orange-600 font-semibold' : ''}>{r.outstandingCrates}</span></td>
                 <td className="td text-right">
                   <button className="btn-ghost px-2" onClick={() => { setErr(''); setForm({ _id: r._id, name: r.name, phone: r.phone || '', address: r.address || '', note: r.note || '' }); }}><Pencil size={14} /></button>
