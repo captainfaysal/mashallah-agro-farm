@@ -15,4 +15,4 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: CLIENT_URL
-        sync: false
+        value: https://mashallah-agro-farm.vercel.app
