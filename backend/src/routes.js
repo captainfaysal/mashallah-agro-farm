@@ -42,8 +42,8 @@ r.post('/auth/login', loginLimiter, wrap(async (req, res) => {
   const { email, password } = z.object({ email: str.email(), password: z.string().min(1) }).parse(req.body);
   const user = await User.findOne({ email: email.toLowerCase() });
   if (!user || !(await bcrypt.compare(password, user.password))) return res.status(401).json({ error: 'Wrong email or password' });
-  signIn(res, user);
-  res.json({ id: user._id, name: user.name });
+  const token = signIn(res, user);
+  res.json({ id: user._id, name: user.name, token });
 }));
 r.post('/auth/logout', (req, res) => {
   res.clearCookie('token', { sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', secure: process.env.NODE_ENV === 'production' });
