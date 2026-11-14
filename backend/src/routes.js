@@ -167,12 +167,20 @@ r.get('/parties/:id/ledger', requireAuth, wrap(async (req, res) => {
   }
 
   events.sort((a, b) => new Date(a.date) - new Date(b.date) || a.priority - b.priority);
+
+  // cycle-based profit/loss: resets after each payment
+  let cycleAllocated = 0, cyclePayment = 0, outstandingCrates = 0;
   const rows = events.map(({ priority, moneyChange = 0, cratesChange = 0, ...event }) => {
-    outstandingMoney += moneyChange;
+    if (event.type === 'SUPPLY') cycleAllocated += event.amountPayable || 0;
+    if (event.type === 'PAYMENT') cyclePayment += event.amountReceived || 0;
     outstandingCrates += cratesChange;
-    return { ...event, outstandingMoney, outstandingCrates };
+    const cycleProfitLoss = cyclePayment - cycleAllocated;
+    const row = { ...event, cycleProfitLoss, outstandingCrates };
+    if (event.type === 'PAYMENT') { cycleAllocated = 0; cyclePayment = 0; }
+    return row;
   });
-  res.json({ party, outstandingMoney, outstandingCrates, rows });
+  const finalProfitLoss = cyclePayment - cycleAllocated;
+  res.json({ party, profitLoss: finalProfitLoss, outstandingCrates, rows });
 }));
 
 /* ---------- products ---------- */

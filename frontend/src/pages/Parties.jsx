@@ -85,11 +85,7 @@ export function PartyLedger() {
   if (err) return <p className="text-red-600">{err}</p>;
   if (!data) return <p className="p-6">লোড হচ্ছে…</p>;
 
-  const { party, outstandingMoney, outstandingCrates, rows } = data;
-  const profitLoss = outstandingMoney; // backend returns running total as outstandingMoney
-  const totalAllocatedCost = rows.filter(r => r.type === 'SUPPLY').reduce((s, r) => s + (r.amountPayable || 0), 0);
-  const totalPayments = rows.filter(r => r.type === 'PAYMENT').reduce((s, r) => s + (r.amountReceived || 0), 0);
-  const pl = totalPayments - totalAllocatedCost;
+  const { party, profitLoss: pl, outstandingCrates, rows } = data;
   const supplies = rows.filter(r => r.type === 'SUPPLY');
   const payments = rows.filter(r => r.type === 'PAYMENT');
   const crates = rows.filter(r =>
@@ -139,8 +135,8 @@ export function PartyLedger() {
                   <td className="td">{r.amountPayable ? taka(r.amountPayable) : ''}</td>
                   <td className="td">{r.amountReceived ? <span className="text-green-600">{taka(r.amountReceived)}</span> : ''}</td>
                   <td className="td font-semibold">
-                    <span className={r.outstandingMoney <= 0 ? 'text-green-600' : 'text-red-600'}>
-                      {r.outstandingMoney <= 0 ? '▲ ' : '▼ '}{taka(Math.abs(r.outstandingMoney))}
+                    <span className={r.cycleProfitLoss >= 0 ? 'text-green-600' : 'text-red-600'}>
+                      {r.cycleProfitLoss >= 0 ? '▲ ' : '▼ '}{taka(Math.abs(r.cycleProfitLoss))}
                     </span>
                   </td>
                   <td className="td">{r.outstandingCrates}</td>
