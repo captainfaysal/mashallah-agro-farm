@@ -64,21 +64,15 @@ r.get('/public/summary', wrap(async (req, res) => {
 r.get('/parties', requireAuth, wrap(async (req, res) => {
   const parties = await Party.find().sort({ name: 1 });
   // outstanding money & crates per party
-  const [supplies, payments, crates, settlements] = await Promise.all([
-    Supply.find().select('_id partyId totalExpectedAmount totalCrates'),
+  const [supplies, payments, crates] = await Promise.all([
+    Supply.find().select('_id partyId totalAllocatedCost totalCrates'),
     Payment.find().select('partyId amount'),
     CrateMovement.find().select('partyId direction quantity supplyId'),
-    Settlement.find().select('partyId supplyId agreeableAmount settlementDate'),
   ]);
   const moneyMap = new Map(), crateMap = new Map();
-  const settlementsByParty = new Map();
-  for (const settlement of settlements) {
-    const key = String(settlement.partyId);
-    settlementsByParty.set(key, [...(settlementsByParty.get(key) || []), settlement]);
-  }
   for (const s of supplies) {
     const k = String(s.partyId);
-    moneyMap.set(k, (moneyMap.get(k) || 0) + Number(s.totalExpectedAmount || 0));
+    moneyMap.set(k, (moneyMap.get(k) || 0) + Number(s.totalAllocatedCost || 0));
     crateMap.set(k, (crateMap.get(k) || 0) + s.totalCrates);
   }
   for (const p of payments) {
@@ -89,12 +83,6 @@ r.get('/parties', requireAuth, wrap(async (req, res) => {
     const k = String(c.partyId);
     if (c.direction === 'RETURNED') crateMap.set(k, (crateMap.get(k) || 0) - Number(c.quantity || 0));
     else if (!c.supplyId) crateMap.set(k, (crateMap.get(k) || 0) + Number(c.quantity || 0));
-  }
-  for (const [partyId, partySettlements] of settlementsByParty) {
-    const partySupplies = supplies.filter((supply) => String(supply.partyId) === partyId);
-    const expected = partySupplies.reduce((sum, supply) => sum + Number(supply.totalExpectedAmount || 0), 0);
-    const settled = supplyReceivableTotal(partySupplies, partySettlements);
-    moneyMap.set(partyId, (moneyMap.get(partyId) || 0) + settled - expected);
   }
   res.json(parties.map(p => ({
     ...p.toObject(),
@@ -139,8 +127,8 @@ r.get('/parties/:id/ledger', requireAuth, wrap(async (req, res) => {
       date: s.supplyDate, priority: 0, type: 'SUPPLY', ref: s._id,
       products: s.items.map(i => `${i.productId?.name} ${i.weightKg}kg`).join(', '),
       weightKg: s.totalWeightKg, cratesSent: s.totalCrates,
-      amountPayable: Number(s.totalExpectedAmount || 0),
-      moneyChange: Number(s.totalExpectedAmount || 0),
+      amountPayable: Number(s.totalAllocatedCost || 0),
+      moneyChange: Number(s.totalAllocatedCost || 0),
       cratesChange: Number(s.totalCrates || 0),
     });
   }
@@ -157,7 +145,7 @@ r.get('/parties/:id/ledger', requireAuth, wrap(async (req, res) => {
     }
   }
   for (const supply of supplies) {
-    let previousReceivable = Number(supply.totalExpectedAmount || 0);
+    let previousReceivable = Number(supply.totalAllocatedCost || 0);
     const linkedSettlements = (settlementsBySupply.get(String(supply._id)) || [])
       .sort((a, b) => new Date(a.settlementDate) - new Date(b.settlementDate));
     for (const settlement of linkedSettlements) {
@@ -445,13 +433,13 @@ r.get('/reports/summary', requireAuth, wrap(async (req, res) => {
     Supply.find({ supplyDate: today }),
     Payment.find({ paymentDate: today }),
     CrateMovement.find({ date: today, direction: 'RETURNED' }),
-    Supply.find().select('_id partyId totalExpectedAmount totalCrates'),
+    Supply.find().select('_id partyId totalAllocatedCost totalCrates'),
     Payment.find().select('partyId amount'),
     CrateMovement.find().select('partyId direction quantity supplyId'),
     Settlement.find().select('supplyId agreeableAmount settlementDate'),
   ]);
 
-  const totalOutstandingMoney = supplyReceivableTotal(allSupplies, allSettlements) - allPayments.reduce((s, x) => s + Number(x.amount || 0), 0);
+  const totalOutstandingMoney = allSupplies.reduce((s, x) => s + Number(x.totalAllocatedCost || 0), 0) - allPayments.reduce((s, x) => s + Number(x.amount || 0), 0);
   const totalOutstandingCrates = allSupplies.reduce((s, x) => s + Number(x.totalCrates || 0), 0)
     + allCrates.filter((c) => c.direction === 'SENT' && !c.supplyId).reduce((s, c) => s + Number(c.quantity || 0), 0)
     - allCrates.filter((c) => c.direction === 'RETURNED').reduce((s, c) => s + Number(c.quantity || 0), 0);
