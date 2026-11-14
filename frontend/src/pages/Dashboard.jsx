@@ -87,11 +87,13 @@ export default function Dashboard() {
       </div>
 
       <section>
-        <h2 className="mb-2 text-lg font-semibold text-forest">মোট বকেয়া</h2>
+        <h2 className="mb-2 text-lg font-semibold text-forest">মোট লাভ/ক্ষতি (পার্টিওয়ারি)</h2>
         <div className="grid gap-3 sm:grid-cols-2">
         <div className="card text-center">
-          <p className="text-sm text-slate-500">মোট বকেয়া টাকা</p>
-          <p className="text-2xl font-bold text-red-600">{taka(data?.totalOutstandingMoney)}</p>
+          <p className="text-sm text-slate-500">মোট লাভ/ক্ষতি</p>
+          <p className={`text-2xl font-bold ${data?.totalProfitLoss >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+            {data?.totalProfitLoss >= 0 ? '▲ ' : '▼ '}{taka(Math.abs(data?.totalProfitLoss || 0))}
+          </p>
         </div>
         <div className="card text-center">
           <p className="text-sm text-slate-500">মোট বকেয়া ক্রেট</p>
@@ -101,20 +103,24 @@ export default function Dashboard() {
       </section>
 
       <div>
-        <h2 className="mb-2 text-lg font-semibold text-forest">পার্টিওয়ারি বকেয়া</h2>
+        <h2 className="mb-2 text-lg font-semibold text-forest">পার্টিওয়ারি লাভ/ক্ষতি</h2>
         <div className="card overflow-x-auto p-0">
           <table className="w-full">
-            <thead><tr><th className="th">পার্টি</th><th className="th">বকেয়া টাকা</th><th className="th">বকেয়া ক্রেট</th></tr></thead>
+            <thead><tr><th className="th">পার্টি</th><th className="th">লাভ/ক্ষতি</th><th className="th">বকেয়া ক্রেট</th></tr></thead>
             <tbody>
-              {parties.filter(p => p.outstandingMoney > 0 || p.outstandingCrates > 0).map(p => (
+              {parties.filter(p => p.profitLoss !== 0 || p.outstandingCrates > 0).map(p => (
                 <tr key={p._id} className="hover:bg-field">
                   <td className="td font-medium">{p.name}</td>
-                  <td className="td"><span className="text-red-600 font-semibold">{taka(p.outstandingMoney)}</span></td>
+                  <td className="td">
+                    <span className={p.profitLoss > 0 ? 'text-green-600 font-semibold' : p.profitLoss < 0 ? 'text-red-600 font-semibold' : ''}>
+                      {p.profitLoss > 0 ? '▲ ' : p.profitLoss < 0 ? '▼ ' : ''}{taka(Math.abs(p.profitLoss || 0))}
+                    </span>
+                  </td>
                   <td className="td"><span className="text-orange-600 font-semibold">{p.outstandingCrates}</span></td>
                 </tr>
               ))}
-              {parties.filter(p => p.outstandingMoney > 0 || p.outstandingCrates > 0).length === 0 && (
-                <tr><td className="td" colSpan={3}>সব পার্টির হিসাব পরিষ্কার ✓</td></tr>
+              {parties.filter(p => p.profitLoss !== 0 || p.outstandingCrates > 0).length === 0 && (
+                <tr><td className="td" colSpan={3}>কোনো লেনদেন নেই ✓</td></tr>
               )}
             </tbody>
           </table>

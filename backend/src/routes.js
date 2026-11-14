@@ -69,15 +69,15 @@ r.get('/parties', requireAuth, wrap(async (req, res) => {
     Payment.find().select('partyId amount'),
     CrateMovement.find().select('partyId direction quantity supplyId'),
   ]);
-  const moneyMap = new Map(), crateMap = new Map();
+  const profitMap = new Map(), crateMap = new Map();
   for (const s of supplies) {
     const k = String(s.partyId);
-    moneyMap.set(k, (moneyMap.get(k) || 0) + Number(s.totalAllocatedCost || 0));
+    profitMap.set(k, (profitMap.get(k) || 0) - Number(s.totalAllocatedCost || 0));
     crateMap.set(k, (crateMap.get(k) || 0) + s.totalCrates);
   }
   for (const p of payments) {
     const k = String(p.partyId);
-    moneyMap.set(k, (moneyMap.get(k) || 0) - Number(p.amount || 0));
+    profitMap.set(k, (profitMap.get(k) || 0) + Number(p.amount || 0));
   }
   for (const c of crates) {
     const k = String(c.partyId);
@@ -86,7 +86,7 @@ r.get('/parties', requireAuth, wrap(async (req, res) => {
   }
   res.json(parties.map(p => ({
     ...p.toObject(),
-    outstandingMoney: moneyMap.get(String(p._id)) || 0,
+    profitLoss: profitMap.get(String(p._id)) || 0,
     outstandingCrates: crateMap.get(String(p._id)) || 0,
     totalAllocatedCost: supplies.filter(s => String(s.partyId) === String(p._id)).reduce((sum, s) => sum + Number(s.totalAllocatedCost || 0), 0),
   })));
@@ -439,7 +439,7 @@ r.get('/reports/summary', requireAuth, wrap(async (req, res) => {
     Settlement.find().select('supplyId agreeableAmount settlementDate'),
   ]);
 
-  const totalOutstandingMoney = allSupplies.reduce((s, x) => s + Number(x.totalAllocatedCost || 0), 0) - allPayments.reduce((s, x) => s + Number(x.amount || 0), 0);
+  const totalProfitLoss = allPayments.reduce((s, x) => s + Number(x.amount || 0), 0) - allSupplies.reduce((s, x) => s + Number(x.totalAllocatedCost || 0), 0);
   const totalOutstandingCrates = allSupplies.reduce((s, x) => s + Number(x.totalCrates || 0), 0)
     + allCrates.filter((c) => c.direction === 'SENT' && !c.supplyId).reduce((s, c) => s + Number(c.quantity || 0), 0)
     - allCrates.filter((c) => c.direction === 'RETURNED').reduce((s, c) => s + Number(c.quantity || 0), 0);
@@ -474,7 +474,7 @@ r.get('/reports/summary', requireAuth, wrap(async (req, res) => {
       monthly: calculateProfitLoss(monthStart),
       yearly: calculateProfitLoss(yearStart),
     },
-    totalOutstandingMoney,
+    totalProfitLoss,
     totalOutstandingCrates,
   });
 }));
