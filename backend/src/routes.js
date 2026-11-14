@@ -119,7 +119,7 @@ r.get('/parties/:id/ledger', requireAuth, wrap(async (req, res) => {
   ]);
   if (!party) return res.status(404).json({ error: 'Party not found' });
 
-  let outstandingMoney = 0, outstandingCrates = 0;
+  let outstandingCrates = 0;
   const events = [];
   const settlementsBySupply = new Map();
   for (const s of supplies) {
